@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Birthday Scavenger Hunt</title>
+<style>
+  body { font-family: sans-serif; margin: 0; padding: 0; background: #fef6e4; }
+  header { background: #ff6f61; color: white; padding: 1em; text-align: center; }
+  .container { padding: 1em; }
+  .task { border: 1px solid #ccc; margin: 1em 0; padding: 1em; border-radius: 8px; background: #fff; }
+  .gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2em; }
+  .gallery img { width: 100px; height: 100px; object-fit: cover; border-radius: 5px; }
+  input[type="text"], input[type="file"] { width: 100%; margin-top: 0.5em; }
+  button { margin-top: 0.5em; background: #ff6f61; color: white; border: none; padding: 0.5em 1em; border-radius: 5px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Birthday Scavenger Hunt</h1>
+</header>
+
+<div class="container">
+  <label for="nickname">Enter your nickname:</label>
+  <input type="text" id="nickname" placeholder="Your nickname">
+  
+  <div id="tasks">
+    <!-- Tasks will be generated here -->
+  </div>
+
+  <h2>Photo Gallery & Scores</h2>
+  <div id="gallery" class="gallery"></div>
+</div>
+
+<script>
+  // Placeholder tasks
+  const tasks = [
+    { id: 1, name: "Selfie with the birthday person", points: 25 },
+    { id: 2, name: "Group photo with 3+ people", points: 15 },
+    { id: 3, name: "Photo of someone dancing", points: 10 },
+  ];
+
+  const gallery = document.getElementById("gallery");
+  const tasksDiv = document.getElementById("tasks");
+
+  // Generate tasks
+  tasks.forEach(task => {
+    const taskDiv = document.createElement("div");
+    taskDiv.className = "task";
+    taskDiv.innerHTML = `
+      <strong>${task.name} (${task.points} points)</strong>
+      <input type="file" accept="image/*" id="file-${task.id}">
+      <button onclick="submitPhoto(${task.id})">Submit Photo</button>
+    `;
+    tasksDiv.appendChild(taskDiv);
+  });
+
+  function submitPhoto(taskId) {
+    const nickname = document.getElementById("nickname").value.trim();
+    if(!nickname) { alert("Please enter a nickname!"); return; }
+
+    const fileInput = document.getElementById(`file-${taskId}`);
+    if(fileInput.files.length === 0) { alert("Please select a photo!"); return; }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = document.createElement("img");
+      img.src = e.target.result;
+      img.alt = `${nickname} - Task ${taskId}`;
+      gallery.appendChild(img);
+      alert(`Photo submitted! +${tasks.find(t=>t.id===taskId).points} points`);
+      fileInput.value = ""; // reset file input
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  }
+</script>
+
+</body>
+</html>
