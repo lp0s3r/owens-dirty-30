@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Party Princess Scavenger Hunt</title>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 
 <style>
   body { font-family: sans-serif; margin: 0; background: #ffe6f0; }
@@ -44,26 +43,16 @@
 </div>
 
 <script type="module">
+// ------------------------
+// Supabase setup
+// ------------------------
+const SUPABASE_URL = "https://jplkrizyfeupwqchbbhy.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Z7-dWwAw7___Ik2Di2ydLA_MB8NeqFZ";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 🔥 Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyABFcEisqbFaWr9aSQ1VTmXhsqFWY8bsJ4",
-  authDomain: "owens-30th.firebaseapp.com",
-  projectId: "owens-30th",
-  storageBucket: "owens-30th.firebasestorage.app",
-  messagingSenderId: "538288246926",
-  appId: "1:538288246926:web:f699c66028bbb9caabf9df"
-};
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-// 🎯 Updated tasks
+// ------------------------
+// Tasks
+// ------------------------
 const tasks = [
   { id: 1, name: "The birthday boy doing something embarrassing", points: 15 },
   { id: 2, name: "Your best cheer pose", points: 10 },
@@ -92,7 +81,9 @@ tasks.forEach(task => {
   tasksDiv.appendChild(div);
 });
 
+// ------------------------
 // Upload function
+// ------------------------
 window.upload = async (taskId) => {
   const nickname = document.getElementById("nickname").value;
   if (!nickname) return alert("Enter nickname");
@@ -101,26 +92,44 @@ window.upload = async (taskId) => {
   const file = fileInput.files[0];
   if (!file) return alert("Select photo");
 
-  const storageRef = ref(storage, `photos/${Date.now()}-${file.name}`);
-  await uploadBytes(storageRef, file);
-  const url = await getDownloadURL(storageRef);
+  // Upload to Supabase Storage
+  const { data: storageData, error: storageError } = await supabase
+    .storage
+    .from('photos')
+    .upload(`${Date.now()}-${file.name}`, file);
+
+  if (storageError) return alert("Upload error: " + storageError.message);
+
+  // Get public URL
+  const { publicUrl, error: urlError } = supabase
+    .storage
+    .from('photos')
+    .getPublicUrl(storageData.path);
+
+  if (urlError) return alert("URL error: " + urlError.message);
 
   const task = tasks.find(t => t.id === taskId);
 
-  await addDoc(collection(db, "submissions"), {
-    nickname,
-    task: task.name,
-    points: task.points,
-    image: url
-  });
+  // Insert into database
+  const { error: dbError } = await supabase
+    .from('submissions')
+    .insert([{ nickname, points: task.points, image_url: publicUrl }]);
 
-  alert("Uploaded!");
+  if (dbError) return alert("Database error: " + dbError.message);
+
+  alert(`Uploaded! +${task.points} pts`);
   loadData();
 };
 
+// ------------------------
 // Load gallery + leaderboard
+// ------------------------
 async function loadData() {
-  const snapshot = await getDocs(collection(db, "submissions"));
+  const { data, error } = await supabase
+    .from('submissions')
+    .select('*');
+
+  if (error) return console.error(error);
 
   const gallery = document.getElementById("gallery");
   const leaderboard = document.getElementById("leaderboard");
@@ -130,14 +139,12 @@ async function loadData() {
 
   const scores = {};
 
-  snapshot.forEach(doc => {
-    const data = doc.data();
-
+  data.forEach(row => {
     const img = document.createElement("img");
-    img.src = data.image;
+    img.src = row.image_url;
     gallery.appendChild(img);
 
-    scores[data.nickname] = (scores[data.nickname] || 0) + data.points;
+    scores[row.nickname] = (scores[row.nickname] || 0) + row.points;
   });
 
   Object.entries(scores)
@@ -150,7 +157,6 @@ async function loadData() {
 }
 
 loadData();
-
 </script>
 
 </body>
