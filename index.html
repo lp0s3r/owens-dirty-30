@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Party Princess Scavenger Hunt</title>
 
-<!-- Supabase -->
+<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.28.0/dist/supabase.min.js"></script>
 
 <style>
@@ -21,7 +21,6 @@ img { width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border
 h2 { color: #ff66b2; }
 </style>
 </head>
-
 <body>
 
 <header>
@@ -32,67 +31,57 @@ h2 { color: #ff66b2; }
 
   <input id="nickname" placeholder="Enter nickname" />
 
-  <!-- TASKS HARDCODED -->
+  <!-- TASKS -->
   <div class="task" data-id="1" data-points="15"> 
     <strong>The birthday boy doing something embarrassing (15 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="2" data-points="10">
     <strong>Your best cheer pose (10 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="3" data-points="10">
     <strong>Recreate the group chat photo (10 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="4" data-points="15">
     <strong>Selfie with someone else celebrating a birthday (15 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="5" data-points="25">
     <strong>Give a stranger a piggyback (25 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="6" data-points="10">
     <strong>The number 1996 (combining photos is acceptable) (10 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="7" data-points="15">
     <strong>A member of the group doing a shot (15 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="8" data-points="10">
     <strong>Someone with a spice girl vibe (leopard print or blonde & pink) (10 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="9" data-points="25">
     <strong>Salsa with a stranger (25 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="10" data-points="10">
     <strong>A selfie with a neon sign (10 pts)</strong><br>
     <input type="file">
     <button>Submit</button>
   </div>
-
   <div class="task" data-id="11" data-points="15">
     <strong>Someone who looks like the birthday boy (15 pts)</strong><br>
     <input type="file">
@@ -111,9 +100,8 @@ h2 { color: #ff66b2; }
 <script>
 const SUPABASE_URL = "https://jplkrizyfeupwqchbbhy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Z7-dWwAw7___Ik2Di2ydLA_MB8NeqFZ";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Task ID → Name mapping
 const taskNames = {
   1: "The birthday boy doing something embarrassing",
   2: "Your best cheer pose",
@@ -128,7 +116,6 @@ const taskNames = {
   11: "Someone who looks like the birthday boy"
 };
 
-// Attach submit handlers
 document.querySelectorAll(".task").forEach(taskDiv => {
   const btn = taskDiv.querySelector("button");
   btn.addEventListener("click", async () => {
@@ -143,28 +130,27 @@ document.querySelectorAll(".task").forEach(taskDiv => {
     const fileName = `${Date.now()}-${file.name}`;
 
     try {
-      // Check if this user already submitted this task
-      const { data: existing, error: checkError } = await supabase
+      console.log("Checking existing submission...");
+      const { data: existing, error: checkError } = await sbClient
         .from("leaderboard")
         .select("*")
         .eq("Name", nickname)
         .eq("Task", taskNames[taskId]);
-
       if (checkError) throw checkError;
       if (existing.length > 0) return alert("You have already submitted this task!");
 
-      // Upload photo
-      const { error: uploadError } = await supabase.storage
+      console.log("Uploading file...");
+      const { error: uploadError } = await sbClient.storage
         .from("photos")
         .upload(fileName, file);
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = sbClient.storage
         .from("photos")
         .getPublicUrl(fileName);
 
-      // Insert leaderboard entry
-      const { error: insertError } = await supabase
+      console.log("Inserting into leaderboard...");
+      const { error: insertError } = await sbClient
         .from("leaderboard")
         .insert([{
           Name: nickname,
@@ -174,21 +160,20 @@ document.querySelectorAll(".task").forEach(taskDiv => {
         }]);
       if (insertError) throw insertError;
 
-      alert("Submitted!");
+      alert("Submitted successfully!");
       fileInput.value = "";
       loadData();
 
     } catch (err) {
-      console.error(err);
+      console.error("Submission error:", err);
       alert("Error: " + err.message);
     }
   });
 });
 
-// Load gallery & leaderboard dynamically
 async function loadData() {
   try {
-    const { data, error } = await supabase.from("leaderboard").select("*");
+    const { data, error } = await sbClient.from("leaderboard").select("*");
     if (error) throw error;
 
     const gallery = document.getElementById("gallery");
@@ -217,11 +202,10 @@ async function loadData() {
       });
 
   } catch (err) {
-    console.error(err);
+    console.error("Load data error:", err);
   }
 }
 
-// Initial load
 loadData();
 </script>
 
