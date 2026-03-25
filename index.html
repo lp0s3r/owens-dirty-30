@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Party Princess Scavenger Hunt</title>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"></script>
+<!-- Firebase v9 compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <style>
-body { font-family: sans-serif; margin: 0; background: #ffe6f0; }
+body { font-family: sans-serif; margin: 0; background: #800080; }
 header { background: #ff66b2; color: white; padding: 1em; text-align: center; }
 .container { padding: 1em; max-width: 800px; margin: auto; }
 .task { background: #ffe6f0; padding: 1em; margin: 1em 0; border-radius: 10px; border: 2px solid #ff66b2; }
@@ -112,7 +112,7 @@ async function submitTask(task) {
     if (!existing.empty) return alert("You already submitted this task!");
 
     // Upload file
-    const storageRef = storage.ref().child(`${nickname}/${Date.now()}-${file.name}`);
+    const storageRef = storage.ref(`${nickname}/${Date.now()}-${file.name}`);
     const snapshot = await storageRef.put(file);
     const url = await snapshot.ref.getDownloadURL();
 
