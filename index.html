@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Party Princess Scavenger Hunt</title>
 
-<!-- Supabase JS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.29.0/dist/supabase.min.js"></script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.28.0/dist/supabase.min.js"></script>
 
 <style>
   body { font-family: sans-serif; margin: 0; background: #ffe6f0; }
@@ -43,12 +43,12 @@
 </div>
 
 <script>
-  // 🚀 Supabase setup
+  // Supabase setup
   const SUPABASE_URL = "https://jplkrizyfeupwqchbbhy.supabase.co";
   const SUPABASE_KEY = "sb_publishable_Z7-dWwAw7___Ik2Di2ydLA_MB8NeqFZ";
   const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // 🎯 Tasks
+  // Tasks
   const tasks = [
     { id: 1, name: "The birthday boy doing something embarrassing", points: 15 },
     { id: 2, name: "Your best cheer pose", points: 10 },
@@ -63,83 +63,107 @@
     { id: 11, name: "Someone who looks like the birthday boy", points: 15 }
   ];
 
-  const tasksDiv = document.getElementById("tasks");
+  // Render tasks after DOM loads
+  document.addEventListener("DOMContentLoaded", () => {
+    const tasksDiv = document.getElementById("tasks");
 
-  // Render tasks
-  tasks.forEach(task => {
-    const div = document.createElement("div");
-    div.className = "task";
-    div.innerHTML = `
-      <strong>${task.name} (${task.points} pts)</strong><br>
-      <input type="file" id="file-${task.id}">
-      <button onclick="upload(${task.id})">Upload</button>
-    `;
-    tasksDiv.appendChild(div);
+    tasks.forEach(task => {
+      const div = document.createElement("div");
+      div.className = "task";
+      div.innerHTML = `
+        <strong>${task.name} (${task.points} pts)</strong><br>
+        <input type="file" id="file-${task.id}">
+        <button id="btn-${task.id}">Submit</button>
+      `;
+      tasksDiv.appendChild(div);
+
+      // Attach click event to Submit
+      document.getElementById(`btn-${task.id}`).addEventListener("click", () => upload(task.id));
+    });
+
+    // Load gallery & leaderboard
+    loadData();
   });
 
   // Upload function
   async function upload(taskId) {
     const nickname = document.getElementById("nickname").value.trim();
-    if (!nickname) return alert("Enter a nickname");
+    if (!nickname) return alert("Enter nickname");
 
     const fileInput = document.getElementById(`file-${taskId}`);
     const file = fileInput.files[0];
-    if (!file) return alert("Select a photo");
+    if (!file) return alert("Select photo");
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage.from('photos').upload(`photos/${Date.now()}-${file.name}`, file);
-    if (error) return alert("Upload failed: " + error.message);
+    try {
+      // Upload file to Supabase storage
+      const fileName = `${Date.now()}-${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("photos")
+        .upload(fileName, file);
 
-    // Get public URL
-    const { publicUrl } = supabase.storage.from('photos').getPublicUrl(data.path);
+      if (uploadError) throw uploadError;
 
-    const task = tasks.find(t => t.id === taskId);
+      const { data: urlData } = supabase.storage
+        .from("photos")
+        .getPublicUrl(fileName);
 
-    // Insert into database (table is now 'leaderboard')
-    const { error: dbError } = await supabase.from('leaderboard').insert([{
-      nickname,
-      task: task.name,
-      points: task.points,
-      image: publicUrl
-    }]);
+      const task = tasks.find(t => t.id === taskId);
 
-    if (dbError) return alert("Database insert failed: " + dbError.message);
+      // Insert into leaderboard table
+      const { error: insertError } = await supabase
+        .from("leaderboard")
+        .insert([
+          { nickname, task: task.name, points: task.points, image: urlData.publicUrl }
+        ]);
 
-    alert("Uploaded!");
-    loadData();
+      if (insertError) throw insertError;
+
+      alert("Submitted!");
+      fileInput.value = ""; // clear file input
+      loadData();
+
+    } catch (err) {
+      console.error(err);
+      alert("Upload failed: " + err.message);
+    }
   }
 
-  // Load gallery + leaderboard
+  // Load gallery & leaderboard
   async function loadData() {
-    const { data: submissions, error } = await supabase.from('leaderboard').select('*');
-    if (error) return console.error(error);
+    try {
+      const { data, error } = await supabase.from("leaderboard").select("*");
+      if (error) throw error;
 
-    const gallery = document.getElementById("gallery");
-    const leaderboard = document.getElementById("leaderboard");
+      const gallery = document.getElementById("gallery");
+      const leaderboard = document.getElementById("leaderboard");
 
-    gallery.innerHTML = "";
-    leaderboard.innerHTML = "";
+      gallery.innerHTML = "";
+      leaderboard.innerHTML = "";
 
-    const scores = {};
+      const scores = {};
 
-    submissions.forEach(sub => {
-      const img = document.createElement("img");
-      img.src = sub.image;
-      gallery.appendChild(img);
-
-      scores[sub.nickname] = (scores[sub.nickname] || 0) + sub.points;
-    });
-
-    Object.entries(scores)
-      .sort((a,b) => b[1] - a[1])
-      .forEach(([name, score]) => {
-        const li = document.createElement("li");
-        li.textContent = `${name}: ${score} pts`;
-        leaderboard.appendChild(li);
+      data.forEach(row => {
+        if (row.image) {
+          const img = document.createElement("img");
+          img.src = row.image;
+          gallery.appendChild(img);
+        }
+        scores[row.nickname] = (scores[row.nickname] || 0) + row.points;
       });
+
+      Object.entries(scores)
+        .sort((a,b) => b[1] - a[1])
+        .forEach(([name, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${name}: ${score} pts`;
+          leaderboard.appendChild(li);
+        });
+
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  loadData();
 </script>
 
 </body>
