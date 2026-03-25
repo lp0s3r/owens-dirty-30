@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Party Princess Scavenger Hunt</title>
 
-<!-- Supabase JS library -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.28.0/dist/supabase.min.js"></script>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"></script>
 
 <style>
 body { font-family: sans-serif; margin: 0; background: #ffe6f0; }
@@ -29,151 +31,153 @@ h2 { color: #ff66b2; }
 </header>
 
 <div class="container">
-
 <input id="nickname" placeholder="Enter nickname" />
 
-<!-- Tasks hard-coded -->
-<div id="tasks">
-  <div class="task"><strong>The birthday boy doing something embarrassing (15 pts)</strong><br><input type="file" id="file-1"><button id="btn-1">Submit</button></div>
-  <div class="task"><strong>Your best cheer pose (10 pts)</strong><br><input type="file" id="file-2"><button id="btn-2">Submit</button></div>
-  <div class="task"><strong>Recreate the group chat photo (10 pts)</strong><br><input type="file" id="file-3"><button id="btn-3">Submit</button></div>
-  <div class="task"><strong>Selfie with someone else celebrating a birthday (15 pts)</strong><br><input type="file" id="file-4"><button id="btn-4">Submit</button></div>
-  <div class="task"><strong>Give a stranger a piggyback (25 pts)</strong><br><input type="file" id="file-5"><button id="btn-5">Submit</button></div>
-  <div class="task"><strong>The number 1996 (combining photos is acceptable) (10 pts)</strong><br><input type="file" id="file-6"><button id="btn-6">Submit</button></div>
-  <div class="task"><strong>A member of the group doing a shot (15 pts)</strong><br><input type="file" id="file-7"><button id="btn-7">Submit</button></div>
-  <div class="task"><strong>Someone with a spice girl vibe (leopard print or blonde & pink) (10 pts)</strong><br><input type="file" id="file-8"><button id="btn-8">Submit</button></div>
-  <div class="task"><strong>Salsa with a stranger (25 pts)</strong><br><input type="file" id="file-9"><button id="btn-9">Submit</button></div>
-  <div class="task"><strong>A selfie with a neon sign (10 pts)</strong><br><input type="file" id="file-10"><button id="btn-10">Submit</button></div>
-  <div class="task"><strong>Someone who looks like the birthday boy (15 pts)</strong><br><input type="file" id="file-11"><button id="btn-11">Submit</button></div>
-</div>
+<div id="tasks"></div>
 
 <h2>📸 Gallery</h2>
 <div id="gallery" class="gallery"></div>
 
 <h2>🏆 Leaderboard</h2>
 <ul id="leaderboard"></ul>
-
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", async () => {
-  const SUPABASE_URL = "https://jplkrizyfeupwqchbbhy.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_Z7-dWwAw7___Ik2Di2ydLA_MB8NeqFZ";
-  const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyABFcEisqbFaWr9aSQ1VTmXhsqFWY8bsJ4",
+  authDomain: "owens-30th.firebaseapp.com",
+  projectId: "owens-30th",
+  storageBucket: "owens-30th.firebasestorage.app",
+  messagingSenderId: "538288246926",
+  appId: "1:538288246926:web:f699c66028bbb9caabf9df"
+};
+firebase.initializeApp(firebaseConfig);
 
-  const tasks = [
-    { id: 1, name: "The birthday boy doing something embarrassing", points: 15 },
-    { id: 2, name: "Your best cheer pose", points: 10 },
-    { id: 3, name: "Recreate the group chat photo", points: 10 },
-    { id: 4, name: "Selfie with someone else celebrating a birthday", points: 15 },
-    { id: 5, name: "Give a stranger a piggyback", points: 25 },
-    { id: 6, name: "The number 1996 (combining photos is acceptable)", points: 10 },
-    { id: 7, name: "A member of the group doing a shot", points: 15 },
-    { id: 8, name: "Someone with a spice girl vibe (leopard print or blonde & pink)", points: 10 },
-    { id: 9, name: "Salsa with a stranger", points: 25 },
-    { id: 10, name: "A selfie with a neon sign", points: 10 },
-    { id: 11, name: "Someone who looks like the birthday boy", points: 15 }
-  ];
+const storage = firebase.storage();
+const db = firebase.firestore();
 
-  async function loadData() {
-    const { data, error } = await sbClient.from("leaderboard").select("*");
-    if (error) return console.error(error);
+// Tasks
+const tasks = [
+  { id: 1, name: "The birthday boy doing something embarrassing", points: 15 },
+  { id: 2, name: "Your best cheer pose", points: 10 },
+  { id: 3, name: "Recreate the group chat photo", points: 10 },
+  { id: 4, name: "Selfie with someone else celebrating a birthday", points: 15 },
+  { id: 5, name: "Give a stranger a piggyback", points: 25 },
+  { id: 6, name: "The number 1996 (combining photos is acceptable)", points: 10 },
+  { id: 7, name: "A member of the group doing a shot", points: 15 },
+  { id: 8, name: "Someone with a spice girl vibe (leopard print or blonde & pink)", points: 10 },
+  { id: 9, name: "Salsa with a stranger", points: 25 },
+  { id: 10, name: "A selfie with a neon sign", points: 10 },
+  { id: 11, name: "Someone who looks like the birthday boy", points: 15 }
+];
 
-    const gallery = document.getElementById("gallery");
-    const leaderboard = document.getElementById("leaderboard");
-    gallery.innerHTML = "";
-    leaderboard.innerHTML = "";
+// Render tasks
+const tasksDiv = document.getElementById("tasks");
+tasks.forEach(task => {
+  const div = document.createElement("div");
+  div.className = "task";
+  div.innerHTML = `
+    <strong>${task.name} (${task.points} pts)</strong><br>
+    <input type="file" id="file-${task.id}">
+    <button id="btn-${task.id}">Submit</button>
+  `;
+  tasksDiv.appendChild(div);
 
-    const scores = {};
-    const submittedTasks = {};
+  document.getElementById(`btn-${task.id}`).addEventListener("click", () => submitTask(task));
+});
 
-    data.forEach(row => {
-      if (row.Image) {
-        const img = document.createElement("img");
-        img.src = row.Image;
-        gallery.appendChild(img);
-      }
-      scores[row.Name] = (scores[row.Name] || 0) + Number(row.Points);
-      submittedTasks[row.Name] = submittedTasks[row.Name] || {};
-      submittedTasks[row.Name][row.Task] = true;
+async function submitTask(task) {
+  const nickname = document.getElementById("nickname").value.trim();
+  if (!nickname) return alert("Enter nickname");
+
+  const fileInput = document.getElementById(`file-${task.id}`);
+  const file = fileInput.files[0];
+  if (!file) return alert("Select a photo");
+
+  try {
+    // Check if this user already submitted this task
+    const existing = await db.collection("leaderboard")
+      .where("nickname", "==", nickname)
+      .where("task", "==", task.name)
+      .get();
+
+    if (!existing.empty) {
+      return alert("You already submitted this task!");
+    }
+
+    // Upload file
+    const storageRef = storage.ref().child(`${nickname}/${Date.now()}-${file.name}`);
+    const snapshot = await storageRef.put(file);
+    const url = await snapshot.ref.getDownloadURL();
+
+    // Save to Firestore
+    await db.collection("leaderboard").add({
+      nickname,
+      task: task.name,
+      points: task.points,
+      image: url,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Mark tasks completed
-    const nickname = document.getElementById("nickname").value.trim();
-    tasks.forEach(task => {
-      const btn = document.getElementById(`btn-${task.id}`);
-      const input = document.getElementById(`file-${task.id}`);
-      if (nickname && submittedTasks[nickname]?.[task.name]) {
-        btn.disabled = true;
-        btn.textContent = "Completed";
-        input.disabled = true;
-      } else {
-        btn.disabled = false;
-        btn.textContent = "Submit";
-        input.disabled = false;
-      }
-    });
-
-    Object.entries(scores).sort((a,b)=>b[1]-a[1]).forEach(([name, score])=>{
-      const li = document.createElement("li");
-      li.textContent = `${name}: ${score} pts`;
-      leaderboard.appendChild(li);
-    });
+    fileInput.value = "";
+    loadData();
+    alert("Submitted!");
+  } catch (err) {
+    console.error(err);
+    alert("Upload failed: " + err.message);
   }
+}
 
-  // Attach submit handlers
-  tasks.forEach(task => {
-    document.getElementById(`btn-${task.id}`).addEventListener("click", async () => {
-      const nickname = document.getElementById("nickname").value.trim();
-      if (!nickname) return alert("Enter nickname");
+async function loadData() {
+  const nickname = document.getElementById("nickname").value.trim();
+  const gallery = document.getElementById("gallery");
+  const leaderboard = document.getElementById("leaderboard");
+  gallery.innerHTML = "";
+  leaderboard.innerHTML = "";
 
-      const fileInput = document.getElementById(`file-${task.id}`);
-      const file = fileInput.files[0];
-      if (!file) return alert("Select a photo");
+  const snapshot = await db.collection("leaderboard").orderBy("timestamp", "asc").get();
+  const scores = {};
+  const submittedTasks = {};
 
-      const filePath = `${Date.now()}-${file.name}`;
-      try {
-        // Get signed URL
-        const { data: signedData, error: signedError } = await sbClient.storage
-          .from("photos")
-          .createSignedUploadUrl(filePath, 3600);
-        if (signedError || !signedData?.signedURL) throw signedError ?? new Error("Signed URL failed");
-
-        // Upload file using signed URL
-        const res = await fetch(signedData.signedURL, {
-          method: "PUT",
-          body: file,
-          headers: { "Content-Type": file.type }
-        });
-        if (!res.ok) throw new Error("Upload failed: " + res.status);
-
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${filePath}`;
-
-        // Insert leaderboard entry
-        const { error: insertError } = await sbClient.from("leaderboard").insert([{
-          Name: nickname,
-          Task: task.name,
-          Points: task.points,
-          Image: publicUrl
-        }]);
-        if (insertError) throw insertError;
-
-        alert("Submitted!");
-        fileInput.value = "";
-        loadData();
-
-      } catch(err) {
-        console.error(err);
-        alert("Upload failed: " + err.message);
-      }
-    });
+  snapshot.forEach(doc => {
+    const row = doc.data();
+    if (row.image) {
+      const img = document.createElement("img");
+      img.src = row.image;
+      gallery.appendChild(img);
+    }
+    scores[row.nickname] = (scores[row.nickname] || 0) + row.points;
+    submittedTasks[row.nickname] = submittedTasks[row.nickname] || {};
+    submittedTasks[row.nickname][row.task] = true;
   });
 
-  document.getElementById("nickname").addEventListener("input", loadData);
+  // Disable completed tasks
+  tasks.forEach(task => {
+    const btn = document.getElementById(`btn-${task.id}`);
+    const input = document.getElementById(`file-${task.id}`);
+    if (nickname && submittedTasks[nickname]?.[task.name]) {
+      btn.disabled = true;
+      btn.textContent = "Completed";
+      input.disabled = true;
+    } else {
+      btn.disabled = false;
+      btn.textContent = "Submit";
+      input.disabled = false;
+    }
+  });
 
-  loadData();
-});
+  // Show leaderboard
+  Object.entries(scores).sort((a,b) => b[1]-a[1]).forEach(([name, score]) => {
+    const li = document.createElement("li");
+    li.textContent = `${name}: ${score} pts`;
+    leaderboard.appendChild(li);
+  });
+}
+
+document.getElementById("nickname").addEventListener("input", loadData);
+loadData();
+
 </script>
-
 </body>
 </html>
