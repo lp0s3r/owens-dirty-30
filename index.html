@@ -53,11 +53,10 @@ const firebaseConfig = {
   appId: "1:538288246926:web:f699c66028bbb9caabf9df"
 };
 firebase.initializeApp(firebaseConfig);
-
 const storage = firebase.storage();
 const db = firebase.firestore();
 
-// Tasks
+// Task definitions
 const tasks = [
   { id: 1, name: "The birthday boy doing something embarrassing", points: 15 },
   { id: 2, name: "Your best cheer pose", points: 10 },
@@ -72,21 +71,29 @@ const tasks = [
   { id: 11, name: "Someone who looks like the birthday boy", points: 15 }
 ];
 
-// Render tasks
-const tasksDiv = document.getElementById("tasks");
-tasks.forEach(task => {
-  const div = document.createElement("div");
-  div.className = "task";
-  div.innerHTML = `
-    <strong>${task.name} (${task.points} pts)</strong><br>
-    <input type="file" id="file-${task.id}">
-    <button id="btn-${task.id}">Submit</button>
-  `;
-  tasksDiv.appendChild(div);
+document.addEventListener("DOMContentLoaded", () => {
+  const tasksDiv = document.getElementById("tasks");
 
-  document.getElementById(`btn-${task.id}`).addEventListener("click", () => submitTask(task));
+  // Render all tasks
+  tasks.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "task";
+    div.innerHTML = `
+      <strong>${task.name} (${task.points} pts)</strong><br>
+      <input type="file" id="file-${task.id}">
+      <button id="btn-${task.id}">Submit</button>
+    `;
+    tasksDiv.appendChild(div);
+
+    document.getElementById(`btn-${task.id}`).addEventListener("click", () => submitTask(task));
+  });
+
+  loadData();
+
+  document.getElementById("nickname").addEventListener("input", loadData);
 });
 
+// Submit a task
 async function submitTask(task) {
   const nickname = document.getElementById("nickname").value.trim();
   if (!nickname) return alert("Enter nickname");
@@ -96,22 +103,20 @@ async function submitTask(task) {
   if (!file) return alert("Select a photo");
 
   try {
-    // Check if this user already submitted this task
+    // Check duplicate submission
     const existing = await db.collection("leaderboard")
       .where("nickname", "==", nickname)
       .where("task", "==", task.name)
       .get();
 
-    if (!existing.empty) {
-      return alert("You already submitted this task!");
-    }
+    if (!existing.empty) return alert("You already submitted this task!");
 
     // Upload file
     const storageRef = storage.ref().child(`${nickname}/${Date.now()}-${file.name}`);
     const snapshot = await storageRef.put(file);
     const url = await snapshot.ref.getDownloadURL();
 
-    // Save to Firestore
+    // Save Firestore entry
     await db.collection("leaderboard").add({
       nickname,
       task: task.name,
@@ -129,6 +134,7 @@ async function submitTask(task) {
   }
 }
 
+// Load gallery and leaderboard
 async function loadData() {
   const nickname = document.getElementById("nickname").value.trim();
   const gallery = document.getElementById("gallery");
@@ -167,17 +173,13 @@ async function loadData() {
     }
   });
 
-  // Show leaderboard
+  // Render leaderboard
   Object.entries(scores).sort((a,b) => b[1]-a[1]).forEach(([name, score]) => {
     const li = document.createElement("li");
     li.textContent = `${name}: ${score} pts`;
     leaderboard.appendChild(li);
   });
 }
-
-document.getElementById("nickname").addEventListener("input", loadData);
-loadData();
-
 </script>
 </body>
 </html>
