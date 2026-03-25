@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Party Princess Scavenger Hunt</title>
 
-<!-- Supabase JS -->
+<!-- Supabase JS library -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.28.0/dist/supabase.min.js"></script>
 
 <style>
@@ -29,184 +29,138 @@ h2 { color: #ff66b2; }
 
 <div class="container">
 
-  <input id="nickname" placeholder="Enter nickname" />
+<input id="nickname" placeholder="Enter nickname" />
 
-  <!-- TASKS -->
-  <div class="task" data-id="1" data-points="15"> 
-    <strong>The birthday boy doing something embarrassing (15 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="2" data-points="10">
-    <strong>Your best cheer pose (10 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="3" data-points="10">
-    <strong>Recreate the group chat photo (10 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="4" data-points="15">
-    <strong>Selfie with someone else celebrating a birthday (15 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="5" data-points="25">
-    <strong>Give a stranger a piggyback (25 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="6" data-points="10">
-    <strong>The number 1996 (combining photos is acceptable) (10 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="7" data-points="15">
-    <strong>A member of the group doing a shot (15 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="8" data-points="10">
-    <strong>Someone with a spice girl vibe (leopard print or blonde & pink) (10 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="9" data-points="25">
-    <strong>Salsa with a stranger (25 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="10" data-points="10">
-    <strong>A selfie with a neon sign (10 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
-  <div class="task" data-id="11" data-points="15">
-    <strong>Someone who looks like the birthday boy (15 pts)</strong><br>
-    <input type="file">
-    <button>Submit</button>
-  </div>
+<!-- Tasks -->
+<div id="tasks"></div>
 
-  <!-- Gallery & leaderboard -->
-  <h2>📸 Gallery</h2>
-  <div id="gallery" class="gallery"></div>
+<h2>📸 Gallery</h2>
+<div id="gallery" class="gallery"></div>
 
-  <h2>🏆 Leaderboard</h2>
-  <ul id="leaderboard"></ul>
+<h2>🏆 Leaderboard</h2>
+<ul id="leaderboard"></ul>
 
 </div>
 
 <script>
-const SUPABASE_URL = "https://jplkrizyfeupwqchbbhy.supabase.co";
-const SUPABASE_KEY = "sb_publishable_Z7-dWwAw7___Ik2Di2ydLA_MB8NeqFZ";
-const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+document.addEventListener("DOMContentLoaded", async () => {
+  // Initialize Supabase client AFTER library loads
+  const SUPABASE_URL = "https://jplkrizyfeupwqchbbhy.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_Z7-dWwAw7___Ik2Di2ydLA_MB8NeqFZ";
+  const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const taskNames = {
-  1: "The birthday boy doing something embarrassing",
-  2: "Your best cheer pose",
-  3: "Recreate the group chat photo",
-  4: "Selfie with someone else celebrating a birthday",
-  5: "Give a stranger a piggyback",
-  6: "The number 1996 (combining photos is acceptable)",
-  7: "A member of the group doing a shot",
-  8: "Someone with a spice girl vibe (leopard print or blonde & pink)",
-  9: "Salsa with a stranger",
-  10: "A selfie with a neon sign",
-  11: "Someone who looks like the birthday boy"
-};
+  // Define tasks
+  const tasks = [
+    { id: 1, name: "The birthday boy doing something embarrassing", points: 15 },
+    { id: 2, name: "Your best cheer pose", points: 10 },
+    { id: 3, name: "Recreate the group chat photo", points: 10 },
+    { id: 4, name: "Selfie with someone else celebrating a birthday", points: 15 },
+    { id: 5, name: "Give a stranger a piggyback", points: 25 },
+    { id: 6, name: "The number 1996 (combining photos is acceptable)", points: 10 },
+    { id: 7, name: "A member of the group doing a shot", points: 15 },
+    { id: 8, name: "Someone with a spice girl vibe (leopard print or blonde & pink)", points: 10 },
+    { id: 9, name: "Salsa with a stranger", points: 25 },
+    { id: 10, name: "A selfie with a neon sign", points: 10 },
+    { id: 11, name: "Someone who looks like the birthday boy", points: 15 }
+  ];
 
-document.querySelectorAll(".task").forEach(taskDiv => {
-  const btn = taskDiv.querySelector("button");
-  btn.addEventListener("click", async () => {
-    const fileInput = taskDiv.querySelector("input[type=file]");
-    const file = fileInput.files[0];
-    const nickname = document.getElementById("nickname").value.trim();
-    if (!nickname) return alert("Enter nickname");
-    if (!file) return alert("Select a file");
+  const tasksDiv = document.getElementById("tasks");
 
-    const taskId = taskDiv.dataset.id;
-    const points = parseInt(taskDiv.dataset.points);
-    const fileName = `${Date.now()}-${file.name}`;
+  // Render tasks
+  tasks.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "task";
+    div.innerHTML = `
+      <strong>${task.name} (${task.points} pts)</strong><br>
+      <input type="file" id="file-${task.id}">
+      <button id="btn-${task.id}">Submit</button>
+    `;
+    tasksDiv.appendChild(div);
 
-    try {
-      console.log("Checking existing submission...");
-      const { data: existing, error: checkError } = await sbClient
-        .from("leaderboard")
-        .select("*")
-        .eq("Name", nickname)
-        .eq("Task", taskNames[taskId]);
-      if (checkError) throw checkError;
-      if (existing.length > 0) return alert("You have already submitted this task!");
+    // Attach submit handler
+    document.getElementById(`btn-${task.id}`).addEventListener("click", async () => {
+      const nickname = document.getElementById("nickname").value.trim();
+      if (!nickname) return alert("Enter nickname");
 
-      console.log("Uploading file...");
-      const { error: uploadError } = await sbClient.storage
-        .from("photos")
-        .upload(fileName, file);
-      if (uploadError) throw uploadError;
+      const fileInput = document.getElementById(`file-${task.id}`);
+      const file = fileInput.files[0];
+      if (!file) return alert("Select photo");
 
-      const { data: urlData } = sbClient.storage
-        .from("photos")
-        .getPublicUrl(fileName);
+      const fileName = `${Date.now()}-${file.name}`;
 
-      console.log("Inserting into leaderboard...");
-      const { error: insertError } = await sbClient
-        .from("leaderboard")
-        .insert([{
+      try {
+        // Check if user already submitted this task
+        const { data: existing, error: checkError } = await sbClient
+          .from("leaderboard")
+          .select("*")
+          .eq("Name", nickname)
+          .eq("Task", task.name);
+        if (checkError) throw checkError;
+        if (existing.length > 0) return alert("You have already submitted this task!");
+
+        // Upload to Supabase storage
+        const { error: uploadError } = await sbClient.storage.from("photos").upload(fileName, file);
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = sbClient.storage.from("photos").getPublicUrl(fileName);
+
+        // Insert into leaderboard
+        const { error: insertError } = await sbClient.from("leaderboard").insert([{
           Name: nickname,
-          Task: taskNames[taskId],
-          Points: points,
+          Task: task.name,
+          Points: task.points,
           Image: urlData.publicUrl
         }]);
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
 
-      alert("Submitted successfully!");
-      fileInput.value = "";
-      loadData();
+        alert("Submitted successfully!");
+        fileInput.value = "";
+        loadData();
 
-    } catch (err) {
-      console.error("Submission error:", err);
-      alert("Error: " + err.message);
-    }
-  });
-});
-
-async function loadData() {
-  try {
-    const { data, error } = await sbClient.from("leaderboard").select("*");
-    if (error) throw error;
-
-    const gallery = document.getElementById("gallery");
-    const leaderboard = document.getElementById("leaderboard");
-
-    gallery.innerHTML = "";
-    leaderboard.innerHTML = "";
-
-    const scores = {};
-
-    data.forEach(row => {
-      if (row.Image) {
-        const img = document.createElement("img");
-        img.src = row.Image;
-        gallery.appendChild(img);
+      } catch (err) {
+        console.error("Submission error:", err);
+        alert("Error: " + err.message);
       }
-      scores[row.Name] = (scores[row.Name] || 0) + Number(row.Points);
     });
+  });
 
-    Object.entries(scores)
-      .sort((a,b) => b[1]-a[1])
-      .forEach(([name, score]) => {
-        const li = document.createElement("li");
-        li.textContent = `${name}: ${score} pts`;
-        leaderboard.appendChild(li);
+  // Load gallery & leaderboard
+  async function loadData() {
+    try {
+      const { data, error } = await sbClient.from("leaderboard").select("*");
+      if (error) throw error;
+
+      const gallery = document.getElementById("gallery");
+      const leaderboard = document.getElementById("leaderboard");
+      gallery.innerHTML = "";
+      leaderboard.innerHTML = "";
+
+      const scores = {};
+      data.forEach(row => {
+        if (row.Image) {
+          const img = document.createElement("img");
+          img.src = row.Image;
+          gallery.appendChild(img);
+        }
+        scores[row.Name] = (scores[row.Name] || 0) + Number(row.Points);
       });
 
-  } catch (err) {
-    console.error("Load data error:", err);
-  }
-}
+      Object.entries(scores)
+        .sort((a,b) => b[1]-a[1])
+        .forEach(([name, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${name}: ${score} pts`;
+          leaderboard.appendChild(li);
+        });
 
-loadData();
+    } catch (err) {
+      console.error("Load data error:", err);
+    }
+  }
+
+  loadData();
+
+});
 </script>
 
 </body>
