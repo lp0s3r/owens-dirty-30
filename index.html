@@ -30,15 +30,16 @@
 
 <div class="container">
 
-<input id="nickname" placeholder="Enter nickname" />
+  <input id="nickname" placeholder="Enter nickname" />
 
-<div id="tasks"></div>
+  <!-- Tasks container -->
+  <div id="tasks"></div>
 
-<h2>📸 Gallery</h2>
-<div id="gallery" class="gallery"></div>
+  <h2>📸 Gallery</h2>
+  <div id="gallery" class="gallery"></div>
 
-<h2>🏆 Leaderboard</h2>
-<ul id="leaderboard"></ul>
+  <h2>🏆 Leaderboard</h2>
+  <ul id="leaderboard"></ul>
 
 </div>
 
@@ -48,7 +49,7 @@
   const SUPABASE_KEY = "sb_publishable_Z7-dWwAw7___Ik2Di2ydLA_MB8NeqFZ";
   const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Tasks
+  // Tasks list
   const tasks = [
     { id: 1, name: "The birthday boy doing something embarrassing", points: 15 },
     { id: 2, name: "Your best cheer pose", points: 10 },
@@ -63,29 +64,23 @@
     { id: 11, name: "Someone who looks like the birthday boy", points: 15 }
   ];
 
-  // Render tasks after DOM loads
-  document.addEventListener("DOMContentLoaded", () => {
-    const tasksDiv = document.getElementById("tasks");
+  // Render tasks and set up uploads
+  const tasksDiv = document.getElementById("tasks");
 
-    tasks.forEach(task => {
-      const div = document.createElement("div");
-      div.className = "task";
-      div.innerHTML = `
-        <strong>${task.name} (${task.points} pts)</strong><br>
-        <input type="file" id="file-${task.id}">
-        <button id="btn-${task.id}">Submit</button>
-      `;
-      tasksDiv.appendChild(div);
+  tasks.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "task";
+    div.innerHTML = `
+      <strong>${task.name} (${task.points} pts)</strong><br>
+      <input type="file" id="file-${task.id}">
+      <button id="btn-${task.id}">Submit</button>
+    `;
+    tasksDiv.appendChild(div);
 
-      // Attach click event to Submit
-      document.getElementById(`btn-${task.id}`).addEventListener("click", () => upload(task.id));
-    });
-
-    // Load gallery & leaderboard
-    loadData();
+    document.getElementById(`btn-${task.id}`).addEventListener("click", () => upload(task.id));
   });
 
-  // Upload function
+  // Upload photo to Supabase and insert into leaderboard
   async function upload(taskId) {
     const nickname = document.getElementById("nickname").value.trim();
     if (!nickname) return alert("Enter nickname");
@@ -95,9 +90,8 @@
     if (!file) return alert("Select photo");
 
     try {
-      // Upload file to Supabase storage
       const fileName = `${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("photos")
         .upload(fileName, file);
 
@@ -109,17 +103,14 @@
 
       const task = tasks.find(t => t.id === taskId);
 
-      // Insert into leaderboard table
       const { error: insertError } = await supabase
         .from("leaderboard")
-        .insert([
-          { nickname, task: task.name, points: task.points, image: urlData.publicUrl }
-        ]);
+        .insert([{ nickname, task: task.name, points: task.points, image: urlData.publicUrl }]);
 
       if (insertError) throw insertError;
 
       alert("Submitted!");
-      fileInput.value = ""; // clear file input
+      fileInput.value = "";
       loadData();
 
     } catch (err) {
@@ -128,7 +119,7 @@
     }
   }
 
-  // Load gallery & leaderboard
+  // Load gallery and leaderboard dynamically
   async function loadData() {
     try {
       const { data, error } = await supabase.from("leaderboard").select("*");
@@ -152,7 +143,7 @@
       });
 
       Object.entries(scores)
-        .sort((a,b) => b[1] - a[1])
+        .sort((a, b) => b[1] - a[1])
         .forEach(([name, score]) => {
           const li = document.createElement("li");
           li.textContent = `${name}: ${score} pts`;
@@ -163,6 +154,9 @@
       console.error(err);
     }
   }
+
+  // Initial load
+  loadData();
 
 </script>
 
