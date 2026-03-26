@@ -11,32 +11,53 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <style>
-body { font-family: sans-serif; margin: 0; background: #800080; }
+body { font-family: sans-serif; margin: 0; background: #ff66b2; }
 header { background: #ff66b2; color: white; padding: 1em; text-align: center; }
+header h1 { font-size: 1.4em; margin: 0 0 0.2em 0; }
+header p { margin: 0; font-size: 0.9em; opacity: 0.9; }
 .container { padding: 1em; max-width: 800px; margin: auto; }
-.task { background: #ffe6f0; padding: 1em; margin: 1em 0; border-radius: 10px; border: 2px solid #ff66b2; }
+.task { background: #ffe6f0; padding: 1em; margin: 1em 0; border-radius: 10px; border: 2px solid #fff; }
 button { background: #ff66b2; color: white; border: none; padding: 0.5em 1em; border-radius: 5px; cursor: pointer; }
 input[type="file"] { margin-top: 0.5em; }
-img { width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border: 2px solid #ff66b2; }
+
+/* Gallery thumbnails */
+.gallery img { width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border: 2px solid #fff; cursor: pointer; }
 .gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1em; }
-#nickname { width: 100%; padding: 0.5em; margin-bottom: 1em; border-radius: 5px; border: 2px solid #ff66b2; }
-h2 { color: #ff66b2; }
+
+/* Lightbox overlay */
+.lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+.lightbox.active { display: flex; }
+.lightbox img { max-width: 90%; max-height: 90%; border-radius: 10px; }
+.lightbox-close { position: fixed; top: 15px; right: 20px; color: white; font-size: 2em; cursor: pointer; z-index: 1001; }
+
+/* Nickname input */
+#nickname { width: 100%; padding: 0.75em; margin-bottom: 1em; border-radius: 5px; border: 2px solid #fff; font-size: 1.1em; box-sizing: border-box; color: #000; }
+#nickname::placeholder { color: #000; }
+
+h2 { color: #fff; }
 .completed { opacity: 0.5; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>🎉 Party Princess Scavenger Hunt</h1>
+  <h1>👑 Party Princess Scavenger Hunt</h1>
+  <p>Celebrating Owen's Dirty 30</p>
 </header>
 
 <div class="container">
-<input id="nickname" placeholder="Enter nickname" />
+<input id="nickname" placeholder="Enter nickname *" />
 
 <div id="tasks"></div>
 
 <h2>📸 Gallery</h2>
 <div id="gallery" class="gallery"></div>
+
+<!-- Lightbox for full-size photos -->
+<div id="lightbox" class="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+  <img id="lightbox-img" src="" />
+</div>
 
 <h2>🏆 Leaderboard</h2>
 <ul id="leaderboard"></ul>
@@ -70,6 +91,15 @@ const tasks = [
   { id: 10, name: "A selfie with a neon sign", points: 10 },
   { id: 11, name: "Someone who looks like the birthday boy", points: 15 }
 ];
+
+// Lightbox functions
+function openLightbox(src) {
+  document.getElementById("lightbox-img").src = src;
+  document.getElementById("lightbox").classList.add("active");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("active");
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const tasksDiv = document.getElementById("tasks");
@@ -151,6 +181,7 @@ async function loadData() {
     if (row.image) {
       const img = document.createElement("img");
       img.src = row.image;
+      img.onclick = () => openLightbox(row.image);
       gallery.appendChild(img);
     }
     scores[row.nickname] = (scores[row.nickname] || 0) + row.points;
