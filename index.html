@@ -12,11 +12,12 @@
 
 <style>
 body { font-family: sans-serif; margin: 0; background: #ff66b2; }
-header { background: #ff66b2; color: white; padding: 1em; text-align: center; }
-header h1 { font-size: 1.4em; margin: 0 0 0.2em 0; }
+header { background: #ff66b2; color: white; padding: 1em 1em 0.5em; text-align: center; }
+header .crown { font-size: 2em; display: block; margin-bottom: -0.1em; }
+header h1 { font-size: 1.8em; margin: 0 0 0.2em 0; }
 header p { margin: 0; font-size: 0.9em; opacity: 0.9; }
 .container { padding: 1em; max-width: 800px; margin: auto; }
-.task { background: #ffe6f0; padding: 1em; margin: 1em 0; border-radius: 10px; border: 2px solid #fff; }
+.task, .nickname-box, .leaderboard-box { background: #ffe6f0; padding: 1em; margin: 1em 0; border-radius: 10px; border: 2px solid #fff; }
 button { background: #ff66b2; color: white; border: none; padding: 0.5em 1em; border-radius: 5px; cursor: pointer; }
 input[type="file"] { margin-top: 0.5em; }
 
@@ -31,8 +32,15 @@ input[type="file"] { margin-top: 0.5em; }
 .lightbox-close { position: fixed; top: 15px; right: 20px; color: white; font-size: 2em; cursor: pointer; z-index: 1001; }
 
 /* Nickname input */
-#nickname { width: 100%; padding: 0.75em; margin-bottom: 1em; border-radius: 5px; border: 2px solid #fff; font-size: 1.1em; box-sizing: border-box; color: #000; }
+#nickname { width: 100%; padding: 0.5em; border-radius: 5px; border: 2px solid #ff66b2; font-size: 0.95em; box-sizing: border-box; color: #000; }
 #nickname::placeholder { color: #000; }
+
+/* Upload hint */
+.upload-hint { color: white; font-size: 0.85em; margin: 0.5em 0 0.5em 0; }
+
+/* Leaderboard */
+.leaderboard-box ol { margin: 0; padding-left: 1.5em; }
+.leaderboard-box li { padding: 0.3em 0; }
 
 h2 { color: #fff; }
 .completed { opacity: 0.5; }
@@ -41,12 +49,18 @@ h2 { color: #fff; }
 <body>
 
 <header>
-  <h1>👑 Party Princess Scavenger Hunt</h1>
+  <span class="crown">👑</span>
+  <h1>Party Princess Scavenger Hunt</h1>
   <p>Celebrating Owen's Dirty 30</p>
 </header>
 
 <div class="container">
-<input id="nickname" placeholder="Enter nickname *" />
+
+<div class="nickname-box">
+  <input id="nickname" placeholder="Enter nickname *" />
+</div>
+
+<p class="upload-hint">Photos take 5-10 seconds to upload and you'll see a success message. Please don't click submit again.</p>
 
 <div id="tasks"></div>
 
@@ -60,7 +74,10 @@ h2 { color: #fff; }
 </div>
 
 <h2>🏆 Leaderboard</h2>
-<ul id="leaderboard"></ul>
+<div class="leaderboard-box">
+  <ol id="leaderboard"></ol>
+</div>
+
 </div>
 
 <script>
@@ -102,6 +119,10 @@ function closeLightbox() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Restore saved nickname
+  const saved = localStorage.getItem("scavenger-nickname");
+  if (saved) document.getElementById("nickname").value = saved;
+
   const tasksDiv = document.getElementById("tasks");
 
   // Render all tasks
@@ -120,7 +141,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadData();
 
-  document.getElementById("nickname").addEventListener("input", loadData);
+  // Save nickname on change
+  document.getElementById("nickname").addEventListener("input", () => {
+    localStorage.setItem("scavenger-nickname", document.getElementById("nickname").value.trim());
+    loadData();
+  });
 });
 
 // Submit a task
@@ -204,7 +229,7 @@ async function loadData() {
     }
   });
 
-  // Render leaderboard
+  // Render leaderboard with numbered positions
   Object.entries(scores).sort((a,b) => b[1]-a[1]).forEach(([name, score]) => {
     const li = document.createElement("li");
     li.textContent = `${name}: ${score} pts`;
