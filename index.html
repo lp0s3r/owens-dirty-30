@@ -38,6 +38,13 @@ input[type="file"] { margin-top: 0.5em; }
 /* Upload hint */
 .upload-hint { color: white; font-size: 0.85em; margin: 0.5em 0 0.5em 0; }
 
+/* Upload overlay */
+.upload-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+.upload-overlay.active { display: flex; }
+.upload-overlay p { color: white; font-size: 1.2em; margin-top: 1em; }
+.spinner { width: 50px; height: 50px; border: 5px solid #fff; border-top: 5px solid #ff66b2; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* Leaderboard */
 .leaderboard-box ol { margin: 0; padding-left: 1.5em; }
 .leaderboard-box li { padding: 0.3em 0; }
@@ -66,6 +73,12 @@ h2 { color: #fff; }
 
 <h2>📸 Gallery</h2>
 <div id="gallery" class="gallery"></div>
+
+<!-- Upload overlay -->
+<div id="upload-overlay" class="upload-overlay">
+  <div class="spinner"></div>
+  <p>Uploading your photo...</p>
+</div>
 
 <!-- Lightbox for full-size photos -->
 <div id="lightbox" class="lightbox" onclick="closeLightbox()">
@@ -171,6 +184,9 @@ async function submitTask(task) {
 
     if (!existing.empty) return alert("You already submitted this task!");
 
+    // Show loading overlay
+    document.getElementById("upload-overlay").classList.add("active");
+
     // Upload file
     const storageRef = storage.ref(`${nickname}/${Date.now()}-${file.name}`);
     const snapshot = await storageRef.put(file);
@@ -185,10 +201,14 @@ async function submitTask(task) {
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    // Hide loading overlay
+    document.getElementById("upload-overlay").classList.remove("active");
+
     fileInput.value = "";
     loadData();
     alert("Submitted!");
   } catch (err) {
+    document.getElementById("upload-overlay").classList.remove("active");
     console.error(err);
     alert("Upload failed: " + err.message);
   }
